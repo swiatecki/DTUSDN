@@ -22,6 +22,9 @@ net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.ui.web.StaticWebRoutable
 net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter
 net.floodlightcontroller.firewall.Firewall
+net.floodlightcontroller.topo_try.InspectTopo
+net.floodlightcontroller.topo_try.ListenForLinks
+net.floodlightcontroller.topo_try.MyTopoManager
 net.floodlightcontroller.loadbalancer.LoadBalancer
 org.sdnplatform.sync.internal.SyncManager
 org.sdnplatform.sync.internal.SyncTorture
