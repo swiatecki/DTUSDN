@@ -27,23 +27,6 @@ public class ListenForLinks implements ITopologyListener, IFloodlightModule {
 	ITopologyService topo;
 	ILinkDiscoveryService discover;
 
-	//
-	// // **********************
-	// // *LinkDiscoveryListener
-	// // **********************
-	//
-	// @Override
-	// public void linkDiscoveryUpdate(LDUpdate update) {
-	// // TODO Auto-generated method stub
-	//
-	// }
-	//
-	// @Override
-	// public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
-	// // TODO Auto-generated method stub
-	//
-	// }
-
 	// **********************
 	// *FloodLightModule
 	// **********************
