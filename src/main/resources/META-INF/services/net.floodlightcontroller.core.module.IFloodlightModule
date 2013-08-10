@@ -25,6 +25,7 @@ net.floodlightcontroller.firewall.Firewall
 net.floodlightcontroller.topo_try.InspectTopo
 net.floodlightcontroller.topo_try.ListenForLinks
 net.floodlightcontroller.topo_try.MyTopoManager
+net.floodlightcontroller.my_static.InstallFlows
 net.floodlightcontroller.loadbalancer.LoadBalancer
 org.sdnplatform.sync.internal.SyncManager
 org.sdnplatform.sync.internal.SyncTorture
