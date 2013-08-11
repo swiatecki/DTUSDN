@@ -182,6 +182,13 @@ public class InstallFlows implements IOFMessageListener, IFloodlightModule {
 		match.loadFromPacket(pi.getPacketData(), pi.getInPort());
 		match.setInputPort(inpPortId);
 
+		match.setWildcards(((Integer) flService.getSwitch(switchId).getAttribute(IOFSwitch.PROP_FASTWILDCARDS))
+				.intValue()
+				& ~OFMatch.OFPFW_IN_PORT
+				& ~OFMatch.OFPFW_DL_VLAN
+				& ~OFMatch.OFPFW_DL_SRC
+				& ~OFMatch.OFPFW_DL_DST & ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK);
+
 		// match.get
 		// Create an action.
 		List<OFAction> actions = Collections.singletonList((OFAction) new OFActionOutput(outPortId, (short) 0xFFFF));
