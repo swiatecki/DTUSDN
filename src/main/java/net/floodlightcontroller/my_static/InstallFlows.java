@@ -100,7 +100,7 @@ public class InstallFlows implements IOFMessageListener, IFloodlightModule {
 
 		// get the IDs for all the switches
 
-		logger.info("!!!!!!!Flow comming from switch {}", sw.getId());
+		logger.info("!!!!!!!Flow comming from switch {} om port {}", sw.getId(), pi.getInPort());
 
 		Set<Long> sws = getAllSwitches();
 
@@ -118,46 +118,109 @@ public class InstallFlows implements IOFMessageListener, IFloodlightModule {
 		short outP2 = 2;
 		short outP1 = 1;
 
+		int sleepInterval = 50;
+
 		if (sw.getId() == 1) {
 			// install first round of flows s5->s4->s3->s2->s1
-			try {
-				pushFlowMod(pi, swArray.get(4), outP2, outP1, cntx);
-				pushFlowMod(pi, swArray.get(3), outP2, outP3, cntx);
-				pushFlowMod(pi, swArray.get(2), outP2, outP3, cntx);
-				pushFlowMod(pi, swArray.get(1), outP2, outP3, cntx);
-				pushFlowMod(pi, swArray.get(0), outP1, outP2, cntx);
-				// send packet out
-				pushPacketOut(sw, pi, outP1, outP2);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+
+			// no packets arriving at s1 should have input port 2
+			if (pi.getInPort() == 2) {
+				logger.info("^^^^^Packet arriving on wrong port !!!^^^^^");
+
+			} else {
+				try {
+					// pushFlowMod(pi, swArray.get(4), outP2, outP1, cntx);
+					// pushFlowMod(pi, swArray.get(3), outP2, outP3, cntx);
+					// pushFlowMod(pi, swArray.get(2), outP2, outP3, cntx);
+					// pushFlowMod(pi, swArray.get(1), outP2, outP3, cntx);
+					// pushFlowMod(pi, swArray.get(0), outP1, outP2, cntx);
+					//
+					try {
+						Thread.sleep(sleepInterval);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+					pushFlowMod(pi, swArray.get(2), outP2, outP1, cntx);
+					try {
+						Thread.sleep(sleepInterval);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+					pushFlowMod(pi, swArray.get(1), outP2, outP3, cntx);
+					try {
+						Thread.sleep(sleepInterval);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+					pushFlowMod(pi, swArray.get(0), pi.getInPort(), outP2, cntx);
+					// send packet out
+					try {
+						Thread.sleep(sleepInterval);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+					pushPacketOut(sw, pi, outP1, outP2);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 
-		} else if (sw.getId() == 5) {
+		} else if (sw.getId() == 3) {
 			// install first round of flows s5->s4->s3->s2->s1
-			try {
-				pushFlowMod(pi, swArray.get(0), outP2, outP1, cntx);
-				pushFlowMod(pi, swArray.get(1), outP3, outP2, cntx);
-				pushFlowMod(pi, swArray.get(2), outP3, outP2, cntx);
-				pushFlowMod(pi, swArray.get(3), outP3, outP2, cntx);
-				pushFlowMod(pi, swArray.get(4), outP1, outP2, cntx);
-				// send packet out
-				pushPacketOut(sw, pi, outP1, outP2);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+
+			if (pi.getInPort() == 2) {
+				logger.info("^^^^^Packet arriving on wrong port !!!^^^^^");
+
+			} else {
+				try {
+					// pushFlowMod(pi, swArray.get(0), outP2, outP1, cntx);
+					// pushFlowMod(pi, swArray.get(1), outP3, outP2, cntx);
+					// pushFlowMod(pi, swArray.get(2), outP3, outP2, cntx);
+					// pushFlowMod(pi, swArray.get(3), outP3, outP2, cntx);
+					// pushFlowMod(pi, swArray.get(4), outP1, outP2, cntx);
+					try {
+						Thread.sleep(sleepInterval);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+					pushFlowMod(pi, swArray.get(0), outP2, outP1, cntx);
+					try {
+						Thread.sleep(sleepInterval);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+					pushFlowMod(pi, swArray.get(1), outP3, outP2, cntx);
+					try {
+						Thread.sleep(sleepInterval);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+					pushFlowMod(pi, swArray.get(2), pi.getInPort(), outP2, cntx);
+					// send packet out
+					try {
+						Thread.sleep(sleepInterval + 200);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+					pushPacketOut(sw, pi, outP1, outP2);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 
 		} else {
-			logger.info(">>>>>>Flow arrived on port {} ", pi.getInPort());
+			logger.info(">>>>>> Flow arrived from a switch which is not end point");
 			OFMatch match = new OFMatch();
 			match.loadFromPacket(pi.getPacketData(), pi.getInPort());
+			logger.info(">>>>>>Flow arrived on port {} MAC SRC : {}", pi.getInPort(), match.getDataLayerSource());
 
 			logger.info(">>>>>>Flow has Ether Type  {} ", match.getDataLayerType());
 			logger.info(">>>>>>Flow has netowrk protocol  {} ", match.getNetworkProtocol());
 		}
 
-		return null;
+		return Command.CONTINUE;
 	}
 
 	private Set<Long> getAllSwitches() {
@@ -183,11 +246,13 @@ public class InstallFlows implements IOFMessageListener, IFloodlightModule {
 		match.setInputPort(inpPortId);
 
 		match.setWildcards(((Integer) flService.getSwitch(switchId).getAttribute(IOFSwitch.PROP_FASTWILDCARDS))
-				.intValue()
-				& ~OFMatch.OFPFW_IN_PORT
-				& ~OFMatch.OFPFW_DL_VLAN
+				.intValue() & ~OFMatch.OFPFW_IN_PORT
+		// & ~OFMatch.OFPFW_DL_VLAN
 				& ~OFMatch.OFPFW_DL_SRC
-				& ~OFMatch.OFPFW_DL_DST & ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK);
+		// & ~OFMatch.OFPFW_DL_DST
+		// & ~OFMatch.OFPFW_DL_TYPE
+		// & ~OFMatch.OFPFW_NW_SRC_ALL & ~OFMatch.OFPFW_NW_DST_ALL
+		);
 
 		// match.get
 		// Create an action.
