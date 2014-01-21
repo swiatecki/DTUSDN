@@ -30,3 +30,7 @@ net.floodlightcontroller.loadbalancer.LoadBalancer
 org.sdnplatform.sync.internal.SyncManager
 org.sdnplatform.sync.internal.SyncTorture
 net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier
+net.floodlightcontroller.custom.firewall.CustomFirewall
+net.floodlightcontroller.custom.acl.CustomACL
+net.floodlightcontroller.custom.networklb.NetworkLB
+
