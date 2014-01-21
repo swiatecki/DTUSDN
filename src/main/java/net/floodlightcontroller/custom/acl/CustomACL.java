@@ -48,7 +48,11 @@ public class CustomACL implements IFloodlightModule, IOFMessageListener {
 	private IFloodlightProviderService provider;
 	private static Logger logger;
 	private ArrayList<CustomAclRule> aclRules;
-	public static final int FORWARDING_APP_ID = 2;
+	public static final int FORWARDING_APP_ID = 10;
+
+	static {
+		AppCookie.registerApp(FORWARDING_APP_ID, "CustomAcl");
+	}
 
 	// ****************************
 	// ***** IFloodlightModule*****
@@ -86,8 +90,6 @@ public class CustomACL implements IFloodlightModule, IOFMessageListener {
 		aclRules = new ArrayList<CustomAclRule>();
 		aclRules.add(new CustomAclRule((byte) 0x6, IPv4.toIPv4Address("10.0.1.0"), (short) 24, (short) 23,
 				CustomAclRule.Direction.OUTBOUND, CustomAclRule.Operation.BLOCK));
-		aclRules.add(new CustomAclRule((byte) 0x6, IPv4.toIPv4Address("10.0.3.0"), (short) 24, (short) 23,
-				CustomAclRule.Direction.INBOUND, CustomAclRule.Operation.BLOCK));
 
 	}
 
