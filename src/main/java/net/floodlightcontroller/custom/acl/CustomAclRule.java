@@ -91,9 +91,6 @@ public class CustomAclRule {
 		short trDst = flowDefinition.getTransportDestination();
 		byte ntProto = flowDefinition.getNetworkProtocol();
 
-		System.out.println("ip source : " + netSrc + " mask source: " + netSrcMask);
-		System.out.println("ip dstination : " + netDest + " mask destination: " + netDestMask);
-
 		if (ntProto == nwProto && trDst == transportPort) {
 			if ((direction == Direction.INBOUND && ipInSubnet(netDest, netDestMask))
 					|| (direction == Direction.OUTBOUND && ipInSubnet(netSrc, netSrcMask))) {

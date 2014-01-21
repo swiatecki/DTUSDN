@@ -137,10 +137,14 @@ public class NetLoadBalance implements IFloodlightModule, IOFMessageListener {
 		OFMatch directMatch = new OFMatch();
 		directMatch.loadFromPacket(pi.getPacketData(), pi.getInPort());
 		int destinationIP = directMatch.getNetworkDestination();
+
+		// if we have an incoming request for the servers destined towards the
+		// IP of the load balancer
 		if (IPv4.toIPv4Address(IP_LB) == destinationIP) {
+
 			short outputPort = getOuputPortForPacket(directMatch.getTransportSource());
-			directMatch.setWildcards(Wildcards.FULL.getInt() & ~OFMatch.OFPFW_DL_TYPE & ~OFMatch.OFPFW_NW_DST_ALL & ~OFMatch.OFPFW_NW_PROTO
-					& ~OFMatch.OFPFW_TP_SRC);
+			directMatch.setWildcards(Wildcards.FULL.getInt() & ~OFMatch.OFPFW_DL_TYPE & ~OFMatch.OFPFW_NW_DST_ALL
+					& ~OFMatch.OFPFW_NW_PROTO & ~OFMatch.OFPFW_TP_SRC);
 
 			OFFlowMod directFlowMod = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
 
@@ -162,8 +166,8 @@ public class NetLoadBalance implements IFloodlightModule, IOFMessageListener {
 			actions.add(outputAction);
 			// configure the flow_mod
 			directFlowMod.setActions(actions).setMatch(directMatch);
-			directFlowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerDestination.MINIMUM_LENGTH
-					+ OFActionNetworkLayerDestination.MINIMUM_LENGTH);
+			directFlowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH
+					+ OFActionDataLayerDestination.MINIMUM_LENGTH + OFActionNetworkLayerDestination.MINIMUM_LENGTH);
 			directFlowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0);
 			directFlowMod.setCommand(OFFlowMod.OFPFC_ADD).setPriority((short) 50);
 
@@ -201,8 +205,8 @@ public class NetLoadBalance implements IFloodlightModule, IOFMessageListener {
 		OFFlowMod reverseFlowMod = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
 		reverseFlowMod.setActions(reverseActions).setCookie(cookie).setPriority((short) 50);
 		reverseFlowMod.setMatch(reverseMatch).setCommand(OFFlowMod.OFPFC_ADD);
-		reverseFlowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerSource.MINIMUM_LENGTH
-				+ OFActionNetworkLayerSource.MINIMUM_LENGTH);
+		reverseFlowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH
+				+ OFActionDataLayerSource.MINIMUM_LENGTH + OFActionNetworkLayerSource.MINIMUM_LENGTH);
 		reverseFlowMod.setHardTimeout((short) 0).setIdleTimeout((short) 0).setBufferId(OFPacketOut.BUFFER_ID_NONE);
 
 		pushMessage(sw, reverseFlowMod);

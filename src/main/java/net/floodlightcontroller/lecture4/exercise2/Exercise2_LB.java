@@ -1,4 +1,4 @@
-package net.floodlightcontroller.custom.networklb;
+package net.floodlightcontroller.lecture4.exercise2;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ import org.openflow.protocol.action.OFActionOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NetworkLB implements IFloodlightModule, IOFMessageListener, ITopologyListener {
+public class Exercise2_LB implements IFloodlightModule, IOFMessageListener, ITopologyListener {
 	private IFloodlightProviderService provider;
 	private ITopologyService topoService;
 	private static Logger logger;
@@ -65,7 +65,7 @@ public class NetworkLB implements IFloodlightModule, IOFMessageListener, ITopolo
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
 		provider = context.getServiceImpl(IFloodlightProviderService.class);
 		topoService = context.getServiceImpl(ITopologyService.class);
-		logger = LoggerFactory.getLogger(NetworkLB.class);
+		logger = LoggerFactory.getLogger(Exercise2_LB.class);
 	}
 
 	@Override
@@ -81,7 +81,7 @@ public class NetworkLB implements IFloodlightModule, IOFMessageListener, ITopolo
 
 	@Override
 	public String getName() {
-		return NetworkLB.class.getSimpleName();
+		return Exercise2_LB.class.getSimpleName();
 	}
 
 	@Override
