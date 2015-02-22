@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,6 +45,9 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 		AppCookie.registerApp(FANCY_APP_ID, "fancymodule");
 	}
 
+	// Create storage for switches. <SwitchID, <MAC,port>>
+	Map<Long, HashMap<Long, Short>> switches = new HashMap<Long, HashMap<Long, Short>>();
+
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
 		// TODO Auto-generated method stub
@@ -81,6 +85,7 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 
 		// Tell FL that we want Packet_in events
 		provider.addOFMessageListener(OFType.PACKET_IN, this);
+
 	}
 
 	@Override
@@ -106,8 +111,11 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 	public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 		Ethernet ethPayload = provider.bcStore.get(cntx, provider.CONTEXT_PI_PAYLOAD);
 
+		OFPacketIn packetIn = (OFPacketIn) msg; // Lots of good raw information
+
 		long sourceMAC = Ethernet.toLong(ethPayload.getSourceMACAddress());
-		System.out.println("mac :" + HexString.toHexString(sourceMAC, 6) + " has been seen on switch: " + sw.getId());
+		System.out.println("mac :" + HexString.toHexString(sourceMAC, 6) + " has been seen on switch: " + sw.getId()
+				+ " on port " + packetIn.getInPort());
 		long destMAC = Ethernet.toLong(ethPayload.getDestinationMACAddress());
 		String destMAChexString = HexString.toHexString(destMAC, 6);
 
@@ -121,7 +129,62 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 			// install flow mod from h2 to h1
 			installForwardingFlow(sw, msg, OUTPUT_PORT_1, cntx);
 		}
+
+		// Testing.
+
+		// FIRST: Check if SW eksists
+
+		Long swID = sw.getId();
+
+		HashMap<Long, Short> checkSW = switches.get(swID);
+
+		if (checkSW != null) {
+			System.out.println(" *** SW ID " + swID + " already exsists ****");
+		} else {
+
+			// Key (SWICH ID)does not exist, save it
+
+			System.out.println(" *** NEW SW ID, saving with ID" + swID + " ****");
+
+			switches.put(swID, new HashMap<Long, Short>());
+
+			System.out.println("Size of SWITCHES: " + switches.size());
+
+		}
+
+		// NOW LOOK AT MAC/PORT for currentSW
+		HashMap<Long, Short> currentSW = switches.get(swID);
+
+		System.out.println(" *** Entry for " + HexString.toHexString(sourceMAC, 6) + " installed in " + swID + " ****"); // Entry
+																															// exists
+																															// in
+																															// this
+																															// SW
+
+		// Create the entry
+		currentSW.put(sourceMAC, packetIn.getInPort());
+
+		// showMappings();
+
+		/*
+		 * HashMap<Long, Short> currentSW = switches.get(swID);
+		 * 
+		 * Short checkEntry = currentSW.get(sourceMAC);
+		 * 
+		 * if (checkEntry != null) { System.out.println(" *** Entry for " +
+		 * HexString.toHexString(sourceMAC, 6) + " already exsists in SW " +
+		 * swID + " ****"); // Entry exists in this SW
+		 * 
+		 * } else {
+		 * 
+		 * // Entry does not exist. Create it!
+		 * 
+		 * // Create the entry currentSW.put(sourceMAC, packetIn.getInPort());
+		 * showMappings(); }
+		 */
+
 		return Command.CONTINUE;
+
 	}
 
 	private void installForwardingFlow(IOFSwitch sw, OFMessage msg, short outputPort2, FloodlightContext cntx) {
@@ -157,6 +220,35 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	private void showMappings() {
+		// Lists the mappings
+		System.out.println("**** BINDINGS ****");
+		System.out.println("** there are currently : " + switches.size() + " switches");
+
+		if (switches.size() > 0) {
+			Long id = new Long(1);
+			HashMap<Long, Short> tmp = switches.get(id);
+
+			if (tmp.size() > 0) {
+				System.out.println("Number of entries: " + tmp.size());
+
+				for (Map.Entry<Long, Short> e : tmp.entrySet()) {
+
+					System.out.println("MAC: " + showAsMAC(e.getKey()) + " is on PORT: " + e.getValue());
+
+				}
+
+			}
+		}
+
+	}
+
+	private String showAsMAC(Long mac) {
+
+		return HexString.toHexString(mac, 6);
+
 	}
 
 }
