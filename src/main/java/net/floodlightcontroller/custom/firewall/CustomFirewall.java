@@ -182,7 +182,6 @@ public class CustomFirewall implements IOFMessageListener, IFloodlightModule {
 	@Override
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
 		floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-
 		// create firewall rules to be applied
 		rules = new ArrayList<CustomFirewallRule>();
 		rules.add(new CustomFirewallRule("10.0.0.1", "10.0.0.4"));

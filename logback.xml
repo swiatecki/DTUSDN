@@ -7,9 +7,9 @@
   <root level="INFO">
     <appender-ref ref="STDOUT" />
   </root>
-  <logger name="org" level="WARN"/>
+  <logger name="org" level="INFO"/>
   <logger name="LogService" level="WARN"/> <!-- Restlet access logging -->
-  <logger name="net.floodlightcontroller" level="DEBUG"/>
-  <logger name="net.floodlightcontroller.logging" level="DEBUG"/>
-  <logger name="org.sdnplatform" level="DEBUG"/>
+  <logger name="net.floodlightcontroller" level="DEBUG"/> <!-- WAS: debug -->
+  <logger name="net.floodlightcontroller.logging" level="DEBUG"/> <!-- WAS: debug -->
+  <logger name="org.sdnplatform" level="INFO"/> <!-- WAS: INFO -->
 </configuration>

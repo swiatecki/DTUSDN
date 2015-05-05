@@ -23,7 +23,6 @@ import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
-import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.Wildcards;
 import org.openflow.protocol.action.OFAction;
@@ -110,16 +109,16 @@ public class Exercise2 implements IFloodlightModule, IOFMessageListener {
 		long destMAC = Ethernet.toLong(ethPayload.getDestinationMACAddress());
 		String destMAChexString = HexString.toHexString(destMAC, 6);
 
-		if (destMAChexString.equals(BROADCAST_MAC)) {
-			// install flow for flooding MAC broadcast packets
-			installForwardingFlow(sw, msg, OFPort.OFPP_FLOOD.getValue(), cntx);
-		} else if (destMAChexString.equals(h2MAC)) {
-			// install flow mod from h1 to h2
-			installForwardingFlow(sw, msg, OUTPUT_PORT_2, cntx);
-		} else if (destMAChexString.equals(h1MAC)) {
-			// install flow mod from h2 to h1
-			installForwardingFlow(sw, msg, OUTPUT_PORT_1, cntx);
-		}
+		// if (destMAChexString.equals(BROADCAST_MAC)) {
+		// // install flow for flooding MAC broadcast packets
+		// installForwardingFlow(sw, msg, OFPort.OFPP_FLOOD.getValue(), cntx);
+		// } else if (destMAChexString.equals(h2MAC)) {
+		// // install flow mod from h1 to h2
+		// installForwardingFlow(sw, msg, OUTPUT_PORT_2, cntx);
+		// } else if (destMAChexString.equals(h1MAC)) {
+		// // install flow mod from h2 to h1
+		// installForwardingFlow(sw, msg, OUTPUT_PORT_1, cntx);
+		// }
 
 		return Command.CONTINUE;
 	}

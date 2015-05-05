@@ -114,21 +114,20 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 		OFPacketIn packetIn = (OFPacketIn) msg; // Lots of good raw information
 
 		long sourceMAC = Ethernet.toLong(ethPayload.getSourceMACAddress());
-		System.out.println("mac :" + HexString.toHexString(sourceMAC, 6) + " has been seen on switch: " + sw.getId()
-				+ " on port " + packetIn.getInPort());
+		System.out.println("mac :" + HexString.toHexString(sourceMAC, 6) + " has been seen on switch: " + sw.getId() + " on port " + packetIn.getInPort());
 		long destMAC = Ethernet.toLong(ethPayload.getDestinationMACAddress());
 		String destMAChexString = HexString.toHexString(destMAC, 6);
 
-		if (destMAChexString.equals(BROADCAST_MAC)) {
-			// install flow for flooding MAC broadcast packets
-			installForwardingFlow(sw, msg, OFPort.OFPP_FLOOD.getValue(), cntx);
-		} else if (destMAChexString.equals(h2MAC)) {
-			// install flow mod from h1 to h2
-			installForwardingFlow(sw, msg, OUTPUT_PORT_2, cntx);
-		} else if (destMAChexString.equals(h1MAC)) {
-			// install flow mod from h2 to h1
-			installForwardingFlow(sw, msg, OUTPUT_PORT_1, cntx);
-		}
+		// if (destMAChexString.equals(BROADCAST_MAC)) {
+		// // install flow for flooding MAC broadcast packets
+		// installForwardingFlow(sw, msg, OFPort.OFPP_FLOOD.getValue(), cntx);
+		// } else if (destMAChexString.equals(h2MAC)) {
+		// // install flow mod from h1 to h2
+		// installForwardingFlow(sw, msg, OUTPUT_PORT_2, cntx);
+		// } else if (destMAChexString.equals(h1MAC)) {
+		// // install flow mod from h2 to h1
+		// installForwardingFlow(sw, msg, OUTPUT_PORT_1, cntx);
+		// }
 
 		// Testing.
 
@@ -136,13 +135,11 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 
 		Long swID = sw.getId();
 
-		HashMap<Long, Short> checkSW = switches.get(swID);
-
-		if (checkSW != null) {
+		if (switches.containsKey(swID)) {
 			System.out.println(" *** SW ID " + swID + " already exsists ****");
 		} else {
 
-			// Key (SWICH ID)does not exist, save it
+			// Key (SWICH ID)does not exist, save it. Thus creating a new switch
 
 			System.out.println(" *** NEW SW ID, saving with ID" + swID + " ****");
 
@@ -155,16 +152,34 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 		// NOW LOOK AT MAC/PORT for currentSW
 		HashMap<Long, Short> currentSW = switches.get(swID);
 
-		System.out.println(" *** Entry for " + HexString.toHexString(sourceMAC, 6) + " installed in " + swID + " ****"); // Entry
-																															// exists
-																															// in
-																															// this
-																															// SW
+		System.out.println(" *** Entry for " + showAsMAC(sourceMAC) + " installed in SW " + swID + " on port: " + packetIn.getInPort() + "****"); // this
 
 		// Create the entry
 		currentSW.put(sourceMAC, packetIn.getInPort());
 
-		// showMappings();
+		/*
+		 * Lets switch
+		 */
+
+		// 1 of 2 things can happen: either we know the destination port, or, if
+		// we don't flood it
+
+		showMappings(swID);
+
+		if (currentSW.containsKey(destMAC)) {
+			// We know what to do
+
+			short outPort = currentSW.get(destMAC);
+
+			installForwardingFlow(sw, msg, outPort, cntx);
+			System.out.println("### Installed flow on SW" + swID + ", telling sending traffic for " + showAsMAC(destMAC) + "to exit via " + outPort);
+		} else {
+
+			// flood that mother fucker
+
+			installForwardingFlow(sw, msg, OFPort.OFPP_FLOOD.getValue(), cntx);
+			System.out.println("Flood! destmac:" + showAsMAC(destMAC) + ", source MAC: " + showAsMAC(sourceMAC) + ", inport:" + packetIn.getInPort());
+		}
 
 		/*
 		 * HashMap<Long, Short> currentSW = switches.get(swID);
@@ -208,8 +223,7 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 
 		// configure the flow_mod
 		flowMod.setActions(actions);
-		flowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0)
-				.setBufferId(OFPacketOut.BUFFER_ID_NONE).setMatch(match)
+		flowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0).setBufferId(OFPacketOut.BUFFER_ID_NONE).setMatch(match)
 				.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH);
 		flowMod.setPriority((short) 100).setCommand(OFFlowMod.OFPFC_ADD);
 
@@ -222,17 +236,17 @@ public class FancyModule implements IFloodlightModule, IOFMessageListener {
 		}
 	}
 
-	private void showMappings() {
+	private void showMappings(Long id) {
 		// Lists the mappings
 		System.out.println("**** BINDINGS ****");
 		System.out.println("** there are currently : " + switches.size() + " switches");
 
 		if (switches.size() > 0) {
-			Long id = new Long(1);
+			// Long id = new Long(1);
 			HashMap<Long, Short> tmp = switches.get(id);
 
 			if (tmp.size() > 0) {
-				System.out.println("Number of entries: " + tmp.size());
+				System.out.println("(SW" + id + ") - Number of entries: " + tmp.size());
 
 				for (Map.Entry<Long, Short> e : tmp.entrySet()) {
 

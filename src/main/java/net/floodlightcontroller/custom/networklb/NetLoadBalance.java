@@ -118,12 +118,8 @@ public class NetLoadBalance implements IFloodlightModule, IOFMessageListener {
 			// If it's an ARP packet, then send an ARP Reply
 			sendArpReply(sw, cntx, ethPayload, pi.getInPort());
 		} else if (etherType == IP_ETHERTYPE_INT) {
-			// if it's an IP packet then change packet headers & forward
-			// 1) install flow mods
-			// 2) send packet_out
-			// 3) install reverse flow-mods
+			// if it's an IP packet then install ACL flow entries
 			installDirectFlowEntries(sw, cntx, pi);
-			// installReverseFlowEntries(sw, cntx, pi);
 		}
 
 		return Command.CONTINUE;
@@ -143,8 +139,7 @@ public class NetLoadBalance implements IFloodlightModule, IOFMessageListener {
 		if (IPv4.toIPv4Address(IP_LB) == destinationIP) {
 
 			short outputPort = getOuputPortForPacket(directMatch.getTransportSource());
-			directMatch.setWildcards(Wildcards.FULL.getInt() & ~OFMatch.OFPFW_DL_TYPE & ~OFMatch.OFPFW_NW_DST_ALL
-					& ~OFMatch.OFPFW_NW_PROTO & ~OFMatch.OFPFW_TP_SRC);
+			directMatch.setWildcards(Wildcards.FULL.getInt() & ~OFMatch.OFPFW_DL_TYPE & ~OFMatch.OFPFW_NW_DST_ALL & ~OFMatch.OFPFW_NW_PROTO & ~OFMatch.OFPFW_TP_SRC);
 
 			OFFlowMod directFlowMod = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
 
@@ -166,8 +161,7 @@ public class NetLoadBalance implements IFloodlightModule, IOFMessageListener {
 			actions.add(outputAction);
 			// configure the flow_mod
 			directFlowMod.setActions(actions).setMatch(directMatch);
-			directFlowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH
-					+ OFActionDataLayerDestination.MINIMUM_LENGTH + OFActionNetworkLayerDestination.MINIMUM_LENGTH);
+			directFlowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerDestination.MINIMUM_LENGTH + OFActionNetworkLayerDestination.MINIMUM_LENGTH);
 			directFlowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0);
 			directFlowMod.setCommand(OFFlowMod.OFPFC_ADD).setPriority((short) 50);
 
@@ -205,8 +199,7 @@ public class NetLoadBalance implements IFloodlightModule, IOFMessageListener {
 		OFFlowMod reverseFlowMod = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
 		reverseFlowMod.setActions(reverseActions).setCookie(cookie).setPriority((short) 50);
 		reverseFlowMod.setMatch(reverseMatch).setCommand(OFFlowMod.OFPFC_ADD);
-		reverseFlowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH
-				+ OFActionDataLayerSource.MINIMUM_LENGTH + OFActionNetworkLayerSource.MINIMUM_LENGTH);
+		reverseFlowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerSource.MINIMUM_LENGTH + OFActionNetworkLayerSource.MINIMUM_LENGTH);
 		reverseFlowMod.setHardTimeout((short) 0).setIdleTimeout((short) 0).setBufferId(OFPacketOut.BUFFER_ID_NONE);
 
 		pushMessage(sw, reverseFlowMod);
@@ -238,8 +231,7 @@ public class NetLoadBalance implements IFloodlightModule, IOFMessageListener {
 			arpReply.setSenderHardwareAddress(Ethernet.toMACAddress(MAC_H1));
 		}
 		// create Packet out and send the ARP reply
-		Ethernet ethernetArpReply = new Ethernet().setSourceMACAddress(Ethernet.toMACAddress(MAC_LB))
-				.setDestinationMACAddress(ethPayload.getSourceMACAddress()).setEtherType(Ethernet.TYPE_ARP);
+		Ethernet ethernetArpReply = new Ethernet().setSourceMACAddress(Ethernet.toMACAddress(MAC_LB)).setDestinationMACAddress(ethPayload.getSourceMACAddress()).setEtherType(Ethernet.TYPE_ARP);
 		ethernetArpReply.setPayload(arpReply);
 
 		// convert the Ethernet payload into a byte array

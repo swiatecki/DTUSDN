@@ -30,10 +30,7 @@ import org.slf4j.LoggerFactory;
 
 /*
  * for this module L3+L4 ACL will be applied on traffic.
- * the module does not perform ARP Req/Reply like a regular router at L3
- * hence, the hosts have to be in the same subnet to be able to reach each other
- * the ARP traffic will be flooded
- * the L3 traffic if fitlered using the ACL
+ * this module uses the Forwarding module of FL
  */
 
 public class CustomACL implements IFloodlightModule, IOFMessageListener {
@@ -133,7 +130,7 @@ public class CustomACL implements IFloodlightModule, IOFMessageListener {
 		logger.info("######## Begin Install ACL Flow !!! #########");
 		long cookie = AppCookie.makeCookie(CUSTOM_ACL_APP_ID, 0);
 
-		// Create flow-mod one for IP another for ARP
+		// Create flow-mod
 		OFFlowMod fm = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
 
 		OFMatch match = new OFMatch();
@@ -144,7 +141,7 @@ public class CustomACL implements IFloodlightModule, IOFMessageListener {
 		// create and configure actions
 		List<OFAction> actions = new ArrayList<OFAction>();
 
-		// set the empty list of actions for the two flow mods;
+		// set the empty list of actions
 		fm.setActions(actions);
 		fm.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0)
 				.setBufferId(OFPacketOut.BUFFER_ID_NONE).setMatch(match).setLengthU(OFFlowMod.MINIMUM_LENGTH);

@@ -34,5 +34,5 @@ net.floodlightcontroller.custom.firewall.CustomFirewall
 net.floodlightcontroller.custom.acl.CustomACL
 net.floodlightcontroller.custom.networklb.NetLoadBalance
 net.floodlightcontroller.custom.mymodule.FancyModule
-
+net.floodlightcontroller.custom.ubergateway.UberGateway
 
