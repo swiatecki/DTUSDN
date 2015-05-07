@@ -3,6 +3,11 @@ package net.floodlightcontroller.custom.ubergateway;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.Wildcards;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
+@JsonSerialize(using = UberGatewayJSONSeriallizer.class)
+@JsonDeserialize(using = UberGatewayJSONDeSeriallizer.class)
 public class UberGatewayRule {
 
 	public static final byte PROTOCOL_ICMP = 0x1;
@@ -11,9 +16,12 @@ public class UberGatewayRule {
 
 	public static final byte PROTOCOL_UDP = 0x11;
 
+	public static final short DL_TYPE_IP = 2048; // 0x0800
+
+	private Boolean careAboutPortNo;
+
 	// private byte nwProto;
-	private int dstIP;
-	private short transportPort;
+
 	private String ruleName;
 
 	private OFMatch match;
@@ -22,25 +30,11 @@ public class UberGatewayRule {
 	public UberGatewayRule(short outport, String RuleName) {
 		this.match = new OFMatch();
 		match.setWildcards(Wildcards.FULL.getInt());
-		setOutport(outport);
+		this.outport = outport;
 		setRuleName(RuleName);
 
-	}
+		careAboutPortNo = false;
 
-	public int getDstIP() {
-		return dstIP;
-	}
-
-	public short getTransportPort() {
-		return transportPort;
-	}
-
-	public short getOutport() {
-		return outport;
-	}
-
-	public void setOutport(short outport) {
-		this.outport = outport;
 	}
 
 	public OFMatch getMatch() {
@@ -55,12 +49,47 @@ public class UberGatewayRule {
 
 	public Boolean matches(OFMatch m) {
 
-		if (m.getNetworkProtocol() == match.getNetworkProtocol()) {
+		// Matches ICMP / tcp / UDP
+
+		if (m.getNetworkProtocol() == PROTOCOL_ICMP && m.getNetworkProtocol() == match.getNetworkProtocol()) {
+			// ICMP does not have a port number, so no reason to check for it..
 
 			return true;
+
+		} else if (m.getNetworkProtocol() == match.getNetworkProtocol()) {
+			// Either TCP or UDP (or other
+
+			if (careAboutPortNo) {
+
+				if (m.getTransportDestination() == match.getTransportDestination()) {
+
+					// Port mathes rule
+
+					return true;
+				} else {
+
+					return false;
+				}
+
+			} else {
+				// We dont care about ports, but the transporttech (TCP/UDP) is
+				// ok
+
+				return true;
+
+			}
+
 		}
 
+		// No match
 		return false;
+
+		/*
+		 * if (m.getNetworkProtocol() == match.getNetworkProtocol()) {
+		 * 
+		 * return true;
+		 * }
+		 */
 
 	}
 
@@ -86,6 +115,35 @@ public class UberGatewayRule {
 		Wildcards w = match.getWildcardObj();
 
 		match.setWildcards(w.matchOn(Wildcards.Flag.DL_TYPE));
+	}
+
+	public void setTransportDst(short transportDestination) {
+		// Set the TransDst AND update the wildcard
+
+		match.setTransportDestination(transportDestination);
+
+		Wildcards w = match.getWildcardObj();
+
+		match.setWildcards(w.matchOn(Wildcards.Flag.TP_DST));
+
+		// Okay, we now care about the port!
+
+		careAboutPortNo = true;
+
+	}
+
+	public short getOutport() {
+		return this.outport;
+	}
+
+	public Boolean getCareAboutPortNo() {
+
+		return careAboutPortNo;
+	}
+
+	public void setDataLayerType(short dataLayerType) {
+		this.match.setDataLayerType(dataLayerType);
+
 	}
 
 }

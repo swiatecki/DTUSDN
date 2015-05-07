@@ -12,7 +12,7 @@ public class UberGatewayServiceRoutable implements RestletRoutable {
 	public Restlet getRestlet(Context context) {
 
 		Router router = new Router(context);
-		router.attach("/status/json", UberGatewayService.class);
+		router.attach("/rules/json", UberGatewayService.class);
 		return router;
 	}
 

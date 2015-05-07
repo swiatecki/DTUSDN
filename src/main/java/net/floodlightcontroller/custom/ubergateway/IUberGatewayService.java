@@ -3,6 +3,8 @@
  */
 package net.floodlightcontroller.custom.ubergateway;
 
+import java.util.ArrayList;
+
 import net.floodlightcontroller.core.module.IFloodlightService;
 
 /**
@@ -12,6 +14,8 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 public interface IUberGatewayService extends IFloodlightService {
 
 	// public ConcurrentCircularBuffer<SwitchMessagePair> getBuffer();
-	public String getStatus();
+	public ArrayList<UberGatewayRule> getRules();
+
+	public void addRule(UberGatewayRule inRule);
 
 }

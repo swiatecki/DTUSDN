@@ -124,11 +124,30 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		// rm.setNetworkProtocol(UberGatewayRule.PROTOCOL_ICMP);
 		// System.out.println("Initial rule is" + rm.toString());
 
-		UberGatewayRule r = new UberGatewayRule(WAN_PORT1, "ICMP out");
-		r.setNwProto(r.PROTOCOL_ICMP);
+		UberGatewayRule r = new UberGatewayRule(WAN_PORT2, "ICMP out");
+		r.setNwProto(UberGatewayRule.PROTOCOL_ICMP);
 		r.setDlType(Ethernet.TYPE_IPv4);
 		rules.add(r);
+
 		logger.debug("Rule is initially: " + r.getMatch());
+
+		/*
+		 * UberGatewayRule telnetRule = new UberGatewayRule(WAN_PORT1,
+		 * "Telnet to endpointA");
+		 * 
+		 * telnetRule.setNwProto(UberGatewayRule.PROTOCOL_TCP);
+		 * telnetRule.setDlType(UberGatewayRule.DL_TYPE_IP);
+		 * 
+		 * rules.add(telnetRule);
+		 */
+
+		UberGatewayRule transportPortRule = new UberGatewayRule(WAN_PORT2, "Test port 9090");
+
+		transportPortRule.setNwProto(UberGatewayRule.PROTOCOL_TCP);
+		transportPortRule.setDlType(UberGatewayRule.DL_TYPE_IP);
+		transportPortRule.setTransportDst((short) 9090);
+
+		rules.add(transportPortRule);
 
 	}
 
@@ -165,7 +184,7 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		if (etherType == ARP_ETHERTYPE_INT) {
 			// If it's an ARP packet, then send an ARP Reply
 			sendArpReply(sw, cntx, ethPayload, p.getInPort());
-			logger.debug("-----Got ARP");
+			logger.debug("-----Got ARP. SRC: " + ethPayload.getSourceMAC().toString() + ", DST MAC: " + ethPayload.getDestinationMAC().toString());
 		} else if (etherType == IP_ETHERTYPE_INT) {
 			// if it's an IP packet then install ACL flow entries
 			// installDirectFlowEntries(sw, cntx, pi);
@@ -246,11 +265,6 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 
 		// CARE about: IN_PORT
 
-		// match.setWildcards(Wildcards.FULL.getInt() & ~OFMatch.OFPFW_DL_TYPE &
-		// ~OFMatch.OFPFW_NW_SRC_ALL & ~OFMatch.OFPFW_NW_DST_ALL &
-		// ~OFMatch.OFPFW_NW_PROTO & ~OFMatch.OFPFW_TP_DST &
-		// ~OFMatch.OFPFW_TP_SRC);
-
 		// create actions
 		List<OFAction> actions = new ArrayList<>();
 
@@ -321,6 +335,12 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 
 		}
 
+		/*
+		 * MUY IMPORTANTE!!!
+		 * Add rewrite actions BEFORE outputActions!!
+		 * If the order is fliped, no rewrite will happen!!!!
+		 */
+
 		actions.add(rewriteMacDestinationAction);
 
 		// add an output action to the list of actions
@@ -376,6 +396,10 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 
 			ethernetArpReply.setSourceMACAddress(Ethernet.toMACAddress(GW_MAC_WAN)).setDestinationMACAddress(ethPayload.getSourceMACAddress()).setEtherType(Ethernet.TYPE_ARP);
 
+		} else {
+
+			logger.debug("Unhandled ARP :( ");
+
 		}
 		// create Packet out and send the ARP reply
 		// Ethernet ethernetArpReply = new
@@ -412,11 +436,19 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 
 	/* REST methods below */
 	@Override
-	public String getStatus() {
+	public ArrayList<UberGatewayRule> getRules() {
 
 		// Method implementing REST
 
-		return "All hail hypnotoad";
+		return rules;
+	}
+
+	@Override
+	public void addRule(UberGatewayRule inRule) {
+		logger.debug("Attemtting to install rule received by REST API");
+
+		rules.add(inRule);
+
 	}
 
 }
