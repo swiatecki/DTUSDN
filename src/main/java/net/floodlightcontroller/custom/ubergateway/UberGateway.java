@@ -224,6 +224,8 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 						// installDefault(sw, msg, r.getOutport(), cntx);
 						installRule(sw, msg, r.getOutport(), r.getMatch(), cntx);
 						System.out.println("Installed rule " + r.getRuleName());
+						reflectRule(r, sw, cntx);
+						logger.debug("Installed reverse rule " + r.getRuleName());
 						++i;
 						break;
 					}
@@ -231,19 +233,21 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 				}
 				System.out.println("Installed " + i + " rules");
 
-			} else if (m.getInputPort() == WAN_PORT1 || m.getInputPort() == WAN_PORT2) {
-				// From WAN -> LAN.
-
-				/*
-				 * Primitive solution: Send to single LAN_PORT, imagine that a
-				 * L2
-				 * device takes care
-				 * Advanced: implement own L2 SW or use LearningSwitch
-				 */
-
-				installDefault(sw, msg, LAN_PORT, cntx);
-				System.out.println("Packet from WAN to LAN");
 			}
+			// else if (m.getInputPort() == WAN_PORT1 || m.getInputPort() ==
+			// WAN_PORT2) {
+			// // From WAN -> LAN.
+			//
+			// /*
+			// * Primitive solution: Send to single LAN_PORT, imagine that a
+			// * L2
+			// * device takes care
+			// * Advanced: implement own L2 SW or use LearningSwitch
+			// */
+			//
+			// installDefault(sw, msg, LAN_PORT, cntx);
+			// System.out.println("Packet from WAN to LAN");
+			// }
 
 		}
 
@@ -310,14 +314,8 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		m.setWildcards(m.getWildcardObj().matchOn(Wildcards.Flag.IN_PORT));
 
 		System.out.println("m is " + m.toString());
-		// match.setWildcards(Wildcards.FULL.getInt() & ~rule.getWildcards());
 
 		// CARE about: IN_PORT
-
-		// match.setWildcards(Wildcards.FULL.getInt() & ~OFMatch.OFPFW_DL_TYPE &
-		// ~OFMatch.OFPFW_NW_SRC_ALL & ~OFMatch.OFPFW_NW_DST_ALL &
-		// ~OFMatch.OFPFW_NW_PROTO & ~OFMatch.OFPFW_TP_DST &
-		// ~OFMatch.OFPFW_TP_SRC);
 
 		// create actions
 		List<OFAction> actions = new ArrayList<>();
@@ -359,6 +357,59 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	private void reflectRule(UberGatewayRule r, IOFSwitch sw, FloodlightContext cntx) {
+
+		// Allows for reverse rules to be installed.
+
+		long cookie = AppCookie.makeCookie(APP_ID, 0);
+
+		OFFlowMod flowMod = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
+
+		// Create a copy of the rule, add in the IN_PORT
+		OFMatch m = r.getMatch().clone();
+
+		m.setInputPort(r.getOutport());
+		m.setWildcards(m.getWildcardObj().matchOn(Wildcards.Flag.IN_PORT));
+
+		if (r.getCareAboutPortNo()) {
+			// Switch portnumbers from DST -> SRC
+			m.setWildcards(m.getWildcardObj().wildcard(Wildcards.Flag.TP_DST));
+			m.setWildcards(m.getWildcardObj().matchOn(Wildcards.Flag.TP_SRC));
+			m.setTransportSource(m.getTransportDestination());
+		}
+
+		// System.out.println("m is " + m.toString());
+
+		// create actions
+		List<OFAction> actions = new ArrayList<>();
+
+		OFAction rewriteMacDestinationAction = null;
+
+		// destination LAN side
+		// The idea is that the LAN side traffic should be handled by a separate
+		// L2 sw.
+		rewriteMacDestinationAction = new OFActionDataLayerDestination(Ethernet.toMACAddress(MAC_LAN));
+
+		actions.add(rewriteMacDestinationAction);
+
+		// add an output action to the list of actions
+		actions.add(new OFActionOutput(LAN_PORT));
+		// configure the flow_mod
+		flowMod.setActions(actions);
+		flowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0).setBufferId(OFPacketOut.BUFFER_ID_NONE).setMatch(m)
+				.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerDestination.MINIMUM_LENGTH);
+		flowMod.setPriority((short) 100).setCommand(OFFlowMod.OFPFC_ADD);
+
+		try {
+			sw.write(flowMod, cntx);
+			sw.flush();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 	/*
@@ -432,6 +483,18 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void pushMessage(IOFSwitch sw, OFFlowMod fm) {
+
+		try {
+			sw.write(fm, null);
+			sw.flush();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 	/* REST methods below */

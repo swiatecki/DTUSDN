@@ -24,6 +24,7 @@ public class UberGatewayService extends ServerResource {
 		l.addAll(ugws.getRules());
 
 		return l;
+
 	}
 
 	@Post("json")
@@ -31,6 +32,50 @@ public class UberGatewayService extends ServerResource {
 		IUberGatewayService ugws = (IUberGatewayService) getContext().getAttributes().get(IUberGatewayService.class.getCanonicalName());
 
 		ugws.addRule(in);
+
 	}
+
+	/*
+	 * private static final String HEADERS_KEY = "org.restlet.http.headers";
+	 * 
+	 * static Series<Header> getMessageHeaders(Message message) {
+	 * 
+	 * ConcurrentMap<String, Object> attrs = message.getAttributes();
+	 * 
+	 * Series<Header> headers = (Series<Header>) attrs.get(HEADERS_KEY);
+	 * 
+	 * if (headers == null) {
+	 * 
+	 * headers = new Series<Header>(Header.class);
+	 * 
+	 * Series<Header> prev = (Series<Header>) attrs.putIfAbsent(HEADERS_KEY,
+	 * headers);
+	 * 
+	 * if (prev != null) {
+	 * headers = prev;
+	 * }
+	 * 
+	 * }
+	 * return headers;
+	 * }
+	 * 
+	 * @Options
+	 * public void doOptions(Representation entity) {
+	 * 
+	 * getMessageHeaders(getResponse()).add("Access-Control-Allow-Origin", "*");
+	 * 
+	 * getMessageHeaders(getResponse()).add("Access-Control-Allow-Methods",
+	 * "POST,OPTIONS,GET");
+	 * 
+	 * getMessageHeaders(getResponse()).add("Access-Control-Allow-Headers",
+	 * "Content-Type");
+	 * 
+	 * getMessageHeaders(getResponse()).add("Access-Control-Allow-Credentials",
+	 * "true");
+	 * 
+	 * getMessageHeaders(getResponse()).add("Access-Control-Max-Age", "60");
+	 * 
+	 * }
+	 */
 
 }
