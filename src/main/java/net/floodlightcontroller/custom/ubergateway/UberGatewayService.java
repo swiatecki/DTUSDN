@@ -3,6 +3,7 @@ package net.floodlightcontroller.custom.ubergateway;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.ServerResource;
@@ -35,6 +36,13 @@ public class UberGatewayService extends ServerResource {
 
 	}
 
+	@Delete("json")
+	public void deleteRule(String ruleName) {
+		IUberGatewayService ugws = (IUberGatewayService) getContext().getAttributes().get(IUberGatewayService.class.getCanonicalName());
+
+		ugws.deleteRule(ruleName);
+
+	}
 	/*
 	 * private static final String HEADERS_KEY = "org.restlet.http.headers";
 	 * 

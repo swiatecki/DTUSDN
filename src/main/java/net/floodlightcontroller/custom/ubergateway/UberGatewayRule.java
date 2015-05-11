@@ -26,6 +26,7 @@ public class UberGatewayRule {
 
 	private OFMatch match;
 	private short outport;
+	private short priority;
 
 	public UberGatewayRule(short outport, String RuleName) {
 		this.match = new OFMatch();
@@ -113,8 +114,9 @@ public class UberGatewayRule {
 		// Set the DLType AND update the wildcard
 		match.setDataLayerType(dataLayerType);
 		Wildcards w = match.getWildcardObj();
-
+		// System.out.println("Pre:" + w.getInt());
 		match.setWildcards(w.matchOn(Wildcards.Flag.DL_TYPE));
+		// System.out.println("post:" + match.getWildcards());
 	}
 
 	public void setTransportDst(short transportDestination) {
@@ -141,9 +143,13 @@ public class UberGatewayRule {
 		return careAboutPortNo;
 	}
 
-	public void setDataLayerType(short dataLayerType) {
-		this.match.setDataLayerType(dataLayerType);
+	public short getPriority() {
 
+		return priority;
+	}
+
+	public void setPriority(short priority) {
+		this.priority = priority;
 	}
 
 }

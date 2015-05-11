@@ -18,4 +18,6 @@ public interface IUberGatewayService extends IFloodlightService {
 
 	public void addRule(UberGatewayRule inRule);
 
+	public void deleteRule(String ruleName);
+
 }

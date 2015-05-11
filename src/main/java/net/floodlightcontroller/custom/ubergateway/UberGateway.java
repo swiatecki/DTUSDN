@@ -3,6 +3,7 @@ package net.floodlightcontroller.custom.ubergateway;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ import org.openflow.protocol.Wildcards;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionDataLayerDestination;
 import org.openflow.protocol.action.OFActionOutput;
+import org.restlet.resource.ResourceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +61,9 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 	private static final String MAC_LAN = "00:00:00:00:00:01";
 	private static final String MAC_WAN1 = "00:00:00:00:00:02";
 	private static final String MAC_WAN2 = "00:00:00:00:00:03";
+
+	IOFSwitch masterSW;
+	FloodlightContext masterCntx;
 
 	static {
 		AppCookie.registerApp(APP_ID, "uberGateway");
@@ -127,6 +132,7 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		UberGatewayRule r = new UberGatewayRule(WAN_PORT2, "ICMP out");
 		r.setNwProto(UberGatewayRule.PROTOCOL_ICMP);
 		r.setDlType(Ethernet.TYPE_IPv4);
+		r.setPriority((short) 1);
 		rules.add(r);
 
 		logger.debug("Rule is initially: " + r.getMatch());
@@ -141,13 +147,26 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		 * rules.add(telnetRule);
 		 */
 
-		UberGatewayRule transportPortRule = new UberGatewayRule(WAN_PORT2, "Test port 9090");
+		/*
+		 * UberGatewayRule transportPortRule = new UberGatewayRule(WAN_PORT2,
+		 * "Test port 9090");
+		 * 
+		 * transportPortRule.setNwProto(UberGatewayRule.PROTOCOL_TCP);
+		 * transportPortRule.setDlType(UberGatewayRule.DL_TYPE_IP);
+		 * transportPortRule.setTransportDst((short) 9090);
+		 * transportPortRule.setPriority((short) 5);
+		 * 
+		 * rules.add(transportPortRule);
+		 */
 
-		transportPortRule.setNwProto(UberGatewayRule.PROTOCOL_TCP);
-		transportPortRule.setDlType(UberGatewayRule.DL_TYPE_IP);
-		transportPortRule.setTransportDst((short) 9090);
+		UberGatewayRule transportPortRule2 = new UberGatewayRule(WAN_PORT1, "TCP port 7070");
 
-		rules.add(transportPortRule);
+		transportPortRule2.setNwProto(UberGatewayRule.PROTOCOL_TCP);
+		transportPortRule2.setDlType(UberGatewayRule.DL_TYPE_IP);
+		transportPortRule2.setTransportDst((short) 7070);
+		transportPortRule2.setPriority((short) 100);
+
+		rules.add(transportPortRule2);
 
 	}
 
@@ -197,35 +216,22 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 
 			if (m.getInputPort() == LAN_PORT) {
 				logger.debug("Got a pkt on LAN interface: DataLayerType " + (short) m.getDataLayerType() + ", Netproto " + (byte) m.getNetworkProtocol());
-				// Okay, determine which outport
 
 				/* Perform a lookup in the rules */
 
-				/*
-				 * if (m.getNetworkDestination() == endpointA) {
-				 * 
-				 * System.out.println("Packet going to endpointA!");
-				 * short outport1 = 3;
-				 * 
-				 * installDefault(sw, msg, outport1, cntx);
-				 * 
-				 * // installForwardingFlow(sw, msg, outport1, cntx);
-				 * 
-				 * } else {
-				 * 
-				 * }
-				 */
+				Collections.sort(rules, new UberGatewayRuleComparator());
+
 				int i = 0;
 				for (UberGatewayRule r : rules) {
-
+					logger.debug("-->" + r.getPriority());
 					if (r.matches(m)) {
 						System.out.println("****** NICE!!!! MATCH****");
 
 						// installDefault(sw, msg, r.getOutport(), cntx);
-						installRule(sw, msg, r.getOutport(), r.getMatch(), cntx);
-						System.out.println("Installed rule " + r.getRuleName());
+						installRule(sw, msg, r, cntx);
+						logger.info("Installed rule " + r.getRuleName());
 						reflectRule(r, sw, cntx);
-						logger.debug("Installed reverse rule " + r.getRuleName());
+						logger.info("Installed reverse rule " + r.getRuleName());
 						++i;
 						break;
 					}
@@ -234,88 +240,32 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 				System.out.println("Installed " + i + " rules");
 
 			}
-			// else if (m.getInputPort() == WAN_PORT1 || m.getInputPort() ==
-			// WAN_PORT2) {
-			// // From WAN -> LAN.
-			//
-			// /*
-			// * Primitive solution: Send to single LAN_PORT, imagine that a
-			// * L2
-			// * device takes care
-			// * Advanced: implement own L2 SW or use LearningSwitch
-			// */
-			//
-			// installDefault(sw, msg, LAN_PORT, cntx);
-			// System.out.println("Packet from WAN to LAN");
-			// }
 
 		}
 
 		return Command.CONTINUE;
 	}
 
-	private void installDefault(IOFSwitch sw, OFMessage msg, short egressPort, FloodlightContext cntx) {
+	private void installRule(IOFSwitch sw, OFMessage msg, UberGatewayRule u, FloodlightContext cntx) {
+		masterSW = sw;
+		masterCntx = cntx;
+
 		long cookie = AppCookie.makeCookie(APP_ID, 0);
+
+		short egressPort = u.getOutport();
+
+		OFMatch rule = u.getMatch();
 
 		OFPacketIn packetIn = (OFPacketIn) msg;
 		OFFlowMod flowMod = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
 
-		// we need to set matching headers & actions for this flow_mod
-		// create the match object-> describes the packet headers for this flow
-		// entry
-		OFMatch match = new OFMatch();
-		match.loadFromPacket(packetIn.getPacketData(), packetIn.getInPort());
-		match.setWildcards(Wildcards.FULL.getInt() & ~OFMatch.OFPFW_IN_PORT);
-
-		// CARE about: IN_PORT
-
-		// create actions
-		List<OFAction> actions = new ArrayList<>();
-
-		OFAction rewriteMacDestinationAction = null;
-
-		// destination LAN side
-		rewriteMacDestinationAction = new OFActionDataLayerDestination(Ethernet.toMACAddress(MAC_LAN));
-
-		actions.add(rewriteMacDestinationAction);
-
-		// add an output action to the list of actions
-		actions.add(new OFActionOutput(egressPort));
-		// configure the flow_mod
-		flowMod.setActions(actions);
-		flowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0).setBufferId(OFPacketOut.BUFFER_ID_NONE).setMatch(match)
-				.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerDestination.MINIMUM_LENGTH);
-		flowMod.setPriority((short) 100).setCommand(OFFlowMod.OFPFC_ADD);
-
-		try {
-			sw.write(flowMod, cntx);
-			sw.flush();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
-	private void installRule(IOFSwitch sw, OFMessage msg, short egressPort, OFMatch rule, FloodlightContext cntx) {
-		long cookie = AppCookie.makeCookie(APP_ID, 0);
-
-		OFPacketIn packetIn = (OFPacketIn) msg;
-		OFFlowMod flowMod = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
-
-		// we need to set matching headers & actions for this flow_mod
-		// create the match object-> describes the packet headers for this flow
-		// entry
-
-		// Create a copy of the rule, add in the IN_PORT
+		// Create a copy of the rule, add in the IN_PORT. Otherwise we would
+		// modify the store rule
 		OFMatch m = rule.clone();
 
 		// match.loadFromPacket(packetIn.getPacketData(), packetIn.getInPort());
 		m.setInputPort(packetIn.getInPort());
 		m.setWildcards(m.getWildcardObj().matchOn(Wildcards.Flag.IN_PORT));
-
-		System.out.println("m is " + m.toString());
-
-		// CARE about: IN_PORT
 
 		// create actions
 		List<OFAction> actions = new ArrayList<>();
@@ -348,7 +298,7 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		flowMod.setActions(actions);
 		flowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0).setBufferId(OFPacketOut.BUFFER_ID_NONE).setMatch(m)
 				.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerDestination.MINIMUM_LENGTH);
-		flowMod.setPriority((short) 100).setCommand(OFFlowMod.OFPFC_ADD);
+		flowMod.setPriority(u.getPriority()).setCommand(OFFlowMod.OFPFC_ADD);
 
 		try {
 			sw.write(flowMod, cntx);
@@ -400,7 +350,7 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		flowMod.setActions(actions);
 		flowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0).setBufferId(OFPacketOut.BUFFER_ID_NONE).setMatch(m)
 				.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerDestination.MINIMUM_LENGTH);
-		flowMod.setPriority((short) 100).setCommand(OFFlowMod.OFPFC_ADD);
+		flowMod.setPriority(r.getPriority()).setCommand(OFFlowMod.OFPFC_ADD);
 
 		try {
 			sw.write(flowMod, cntx);
@@ -497,6 +447,129 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 
 	}
 
+	// private void deleteRule(OFMessage msg, UberGatewayRule u,
+	// FloodlightContext cntx) {
+	private void deleteFlow(UberGatewayRule u) {
+
+		long cookie = AppCookie.makeCookie(APP_ID, 0);
+
+		short egressPort = u.getOutport();
+
+		OFMatch rule = u.getMatch();
+		// OFPacketIn packetIn = (OFPacketIn) msg;
+		OFFlowMod flowMod = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
+
+		// Create a copy of the rule, add in the IN_PORT. Otherwise we would
+		// modify the store rule
+		OFMatch m = rule.clone();
+
+		// m.setInputPort(packetIn.getInPort());
+		// m.setWildcards(m.getWildcardObj().matchOn(Wildcards.Flag.IN_PORT));
+
+		// create actions
+		List<OFAction> actions = new ArrayList<>();
+
+		OFActionDataLayerDestination rewriteMacDestinationAction = new OFActionDataLayerDestination();
+
+		if (egressPort == 2) {
+			// destination host endpointA
+			rewriteMacDestinationAction.setDataLayerAddress(Ethernet.toMACAddress(MAC_WAN1));
+			logger.debug("Rewriting MAC!");
+
+		} else {
+			// destination host endpointB
+			rewriteMacDestinationAction.setDataLayerAddress(Ethernet.toMACAddress(MAC_WAN2));
+
+		}
+
+		/*
+		 * MUY IMPORTANTE!!!
+		 * Add rewrite actions BEFORE outputActions!!
+		 * If the order is fliped, no rewrite will happen!!!!
+		 */
+
+		actions.add(rewriteMacDestinationAction);
+
+		// add an output action to the list of actions
+		actions.add(new OFActionOutput(u.getOutport()));
+
+		// configure the flow_mod
+		flowMod.setActions(actions);
+		flowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0).setBufferId(OFPacketOut.BUFFER_ID_NONE).setMatch(m)
+				.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerDestination.MINIMUM_LENGTH);
+		flowMod.setPriority(u.getPriority()).setCommand(OFFlowMod.OFPFC_DELETE);
+
+		try {
+			logger.debug("Sending flowMod for delete");
+			masterSW.write(flowMod, this.masterCntx);
+			masterSW.flush();
+		} catch (IOException e) {
+			logger.error("Error in deleting");
+			e.printStackTrace();
+		} catch (ResourceException r) {
+			logger.error("Something went wrong");
+			r.printStackTrace();
+
+		}
+	}
+
+	private void deleteReflectedFlow(UberGatewayRule r) {
+
+		long cookie = AppCookie.makeCookie(APP_ID, 0);
+
+		OFFlowMod flowMod = (OFFlowMod) provider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
+
+		short egressPort = r.getOutport();
+
+		// Create a copy of the rule, add in the IN_PORT
+		OFMatch m = r.getMatch().clone();
+
+		m.setInputPort(r.getOutport());
+		m.setWildcards(m.getWildcardObj().matchOn(Wildcards.Flag.IN_PORT));
+
+		if (r.getCareAboutPortNo()) {
+			// Switch portnumbers from DST -> SRC
+			m.setWildcards(m.getWildcardObj().wildcard(Wildcards.Flag.TP_DST));
+			m.setWildcards(m.getWildcardObj().matchOn(Wildcards.Flag.TP_SRC));
+			m.setTransportSource(m.getTransportDestination());
+		}
+
+		// System.out.println("m is " + m.toString());
+
+		// create actions
+		List<OFAction> actions = new ArrayList<>();
+
+		OFAction rewriteMacDestinationAction = null;
+
+		// destination LAN side
+		// The idea is that the LAN side traffic should be handled by a separate
+		// L2 sw.
+		rewriteMacDestinationAction = new OFActionDataLayerDestination(Ethernet.toMACAddress(MAC_LAN));
+
+		actions.add(rewriteMacDestinationAction);
+
+		// add an output action to the list of actions
+		actions.add(new OFActionOutput(LAN_PORT));
+		// configure the flow_mod
+		flowMod.setActions(actions);
+		flowMod.setCookie(cookie).setHardTimeout((short) 0).setIdleTimeout((short) 0).setBufferId(OFPacketOut.BUFFER_ID_NONE).setMatch(m)
+				.setLengthU(OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH + OFActionDataLayerDestination.MINIMUM_LENGTH);
+		flowMod.setPriority(r.getPriority()).setCommand(OFFlowMod.OFPFC_DELETE);
+
+		try {
+			logger.debug("Sending flowMod for delete");
+			masterSW.write(flowMod, this.masterCntx);
+			masterSW.flush();
+		} catch (IOException e) {
+			logger.error("Error in deleting");
+			e.printStackTrace();
+		} catch (ResourceException re) {
+			logger.error("Something went wrong");
+			re.printStackTrace();
+
+		}
+	}
+
 	/* REST methods below */
 	@Override
 	public ArrayList<UberGatewayRule> getRules() {
@@ -514,4 +587,38 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 
 	}
 
+	public void deleteRule(String ruleName) {
+		logger.debug("Attempting to delete rule with name:'" + ruleName + "'");
+
+		int i = 0;
+		for (UberGatewayRule r : rules) {
+			logger.debug("Current rule name ='" + r.getRuleName() + "'");
+
+			if (r.getRuleName().equals(ruleName)) {
+				logger.info("Found rule to delete");
+
+				logger.debug("Calling flowDelete");
+				// FLOW mod delete
+				deleteFlow(r);
+
+				// delete reverse flow
+
+				deleteReflectedFlow(r);
+
+				// Remove from internal store
+				logger.debug("Trying to remove from internal list");
+				if (rules.remove(r)) {
+
+					logger.debug("Successfully removed from rules");
+				} else {
+					logger.warn("Error in deleting from rules");
+				}
+
+				++i;
+				break;
+			}
+
+		}
+
+	}
 }
