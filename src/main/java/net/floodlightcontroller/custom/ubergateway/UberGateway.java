@@ -193,8 +193,6 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		// Handles incomming packet
 
 		Ethernet ethPayload = provider.bcStore.get(cntx, provider.CONTEXT_PI_PAYLOAD);
-		// IPv4 ippayload = provider.bcStore.get(cntx,
-		// provider.CONTEXT_PI_PAYLOAD);
 
 		OFPacketIn p = (OFPacketIn) msg;
 
