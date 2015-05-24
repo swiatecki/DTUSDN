@@ -119,19 +119,13 @@ public class UberGatewayRule {
 		// System.out.println("post:" + match.getWildcards());
 	}
 
-	public void setTransportDst(short transportDestination) {
+	public void setTransportDst(short transportDst) {
 		// Set the TransDst AND update the wildcard
-
-		match.setTransportDestination(transportDestination);
-
+		match.setTransportDestination(transportDst);
 		Wildcards w = match.getWildcardObj();
-
 		match.setWildcards(w.matchOn(Wildcards.Flag.TP_DST));
-
 		// Okay, we now care about the port!
-
 		careAboutPortNo = true;
-
 	}
 
 	public short getOutport() {

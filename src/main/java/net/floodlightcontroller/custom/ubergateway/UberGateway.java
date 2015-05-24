@@ -195,7 +195,7 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 		Ethernet ethPayload = provider.bcStore.get(cntx, provider.CONTEXT_PI_PAYLOAD);
 
 		OFPacketIn p = (OFPacketIn) msg;
-
+		masterSW = sw;
 		short etherType = ethPayload.getEtherType();
 
 		if (etherType == ARP_ETHERTYPE_INT) {
@@ -245,7 +245,7 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 	}
 
 	private void installRule(IOFSwitch sw, OFMessage msg, UberGatewayRule u, FloodlightContext cntx) {
-		masterSW = sw;
+
 		masterCntx = cntx;
 
 		long cookie = AppCookie.makeCookie(APP_ID, 0);
@@ -499,7 +499,10 @@ public class UberGateway implements IFloodlightModule, IOFMessageListener, IUber
 
 		try {
 			logger.debug("Sending flowMod for delete");
-			masterSW.write(flowMod, this.masterCntx);
+			if (masterSW == null) {
+				logger.error("Nope, nope, nope!");
+			}
+			masterSW.write(flowMod, null);
 			masterSW.flush();
 		} catch (IOException e) {
 			logger.error("Error in deleting");
